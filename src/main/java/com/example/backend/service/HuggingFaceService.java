@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -10,7 +11,8 @@ public class HuggingFaceService {
     private static final String API_URL =
             "https://api-inference.huggingface.co/models/google/flan-t5-large";
 
-    private static final String API_KEY = "REMOVED";
+    @Value("${huggingface.token}")
+    private String apiKey;
 
     public String getAIResponse(String prompt){
 
@@ -20,7 +22,7 @@ public class HuggingFaceService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(API_KEY);
+            headers.setBearerAuth(apiKey);
 
             String body =
                     "{ \"inputs\": \"" + prompt + "\" }";
