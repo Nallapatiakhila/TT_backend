@@ -34,29 +34,38 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
 
-        // Check if email already exists
-        User existingUser = userRepository.findByEmail(email);
+        try {
 
-        if (existingUser != null) {
-            response.put("message", "Email already registered");
-            return response;
+            User existingUser = userRepository.findByEmail(email);
+
+            if (existingUser != null) {
+                response.put("message", "Email already registered");
+                return response;
+            }
+
+            User user = new User();
+            user.setName(name);
+            user.setEmail(email);
+            user.setPhone(phone);
+            user.setPassword(password);
+
+            userRepository.save(user);
+
+            // send OTP
+            otpService.sendOtp(email);
+
+            response.put("message", "OTP sent successfully");
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+            response.put("message", "Registration failed. Please try again.");
+
         }
-
-        User user = new User();
-        user.setName(name);
-        user.setEmail(email);
-        user.setPhone(phone);
-        user.setPassword(password);
-
-        userRepository.save(user);
-
-        // Send OTP after registration
-        otpService.sendOtp(email);
-
-        response.put("message", "OTP sent successfully");
 
         return response;
     }
+
 
     // LOGIN USER
     @PostMapping("/login")
@@ -67,47 +76,67 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
 
-        User user = userRepository.findByEmail(email);
+        try {
 
-        if (user == null) {
-            response.put("message", "User not found");
-            return response;
+            User user = userRepository.findByEmail(email);
+
+            if (user == null) {
+                response.put("message", "User not found");
+                return response;
+            }
+
+            if (!user.getPassword().equals(password)) {
+                response.put("message", "Invalid password");
+                return response;
+            }
+
+            // send OTP
+            otpService.sendOtp(email);
+
+            response.put("message", "OTP sent successfully");
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+            response.put("message", "Login failed. Please try again.");
+
         }
-
-        if (!user.getPassword().equals(password)) {
-            response.put("message", "Invalid password");
-            return response;
-        }
-
-        // Send OTP for login verification
-        otpService.sendOtp(email);
-
-        response.put("message", "OTP sent successfully");
 
         return response;
     }
 
+
     // VERIFY OTP
     @PostMapping("/verify-otp")
-    public Map<String, Object> verifyOtp(@RequestBody Map<String, String> body) {
+    public Map<String,Object> verifyOtp(@RequestBody Map<String,String> body){
 
         String email = body.get("email");
         String otp = body.get("otp");
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String,Object> response = new HashMap<>();
 
-        boolean isValid = otpService.verifyOtp(email, otp);
+        try {
 
-        if (isValid) {
-            response.put("message", "OTP verified successfully");
-        } else {
-            response.put("message", "OTP verification failed");
+            boolean isValid = otpService.verifyOtp(email, otp);
+
+            if(isValid){
+                response.put("message","OTP verified successfully");
+            } else {
+                response.put("message","OTP verification failed");
+            }
+
+        } catch(Exception e){
+
+            e.printStackTrace();
+            response.put("message","OTP verification error");
+
         }
 
         return response;
     }
 
-    // DEBUG API (to check users stored in DB)
+
+    // DEBUG ENDPOINT (optional)
     @GetMapping("/users")
     public List<User> getAllUsers() {
         return userRepository.findAll();
