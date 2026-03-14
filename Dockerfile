@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy all source files
 COPY . .
 
+# Ensure the Maven wrapper is executable (some systems lose the +x bit when checked out)
+RUN chmod +x mvnw
+
 # Build the application
 RUN ./mvnw -DskipTests package
 
