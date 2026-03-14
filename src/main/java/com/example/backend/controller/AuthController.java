@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -33,8 +34,9 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
 
-        // check if email already exists
+        // Check if email already exists
         User existingUser = userRepository.findByEmail(email);
+
         if (existingUser != null) {
             response.put("message", "Email already registered");
             return response;
@@ -48,6 +50,7 @@ public class AuthController {
 
         userRepository.save(user);
 
+        // Send OTP after registration
         otpService.sendOtp(email);
 
         response.put("message", "OTP sent successfully");
@@ -76,28 +79,37 @@ public class AuthController {
             return response;
         }
 
+        // Send OTP for login verification
         otpService.sendOtp(email);
 
         response.put("message", "OTP sent successfully");
 
         return response;
     }
+
+    // VERIFY OTP
     @PostMapping("/verify-otp")
-    public Map<String,Object> verifyOtp(@RequestBody Map<String,String> body){
+    public Map<String, Object> verifyOtp(@RequestBody Map<String, String> body) {
 
-    String email = body.get("email");
-    String otp = body.get("otp");
+        String email = body.get("email");
+        String otp = body.get("otp");
 
-    Map<String,Object> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
 
-    boolean isValid = otpService.verifyOtp(email, otp);
+        boolean isValid = otpService.verifyOtp(email, otp);
 
-    if(isValid){
-        response.put("message","OTP verified successfully");
-    } else {
-        response.put("message","OTP verification failed");
+        if (isValid) {
+            response.put("message", "OTP verified successfully");
+        } else {
+            response.put("message", "OTP verification failed");
+        }
+
+        return response;
     }
 
-    return response;
-}
+    // DEBUG API (to check users stored in DB)
+    @GetMapping("/users")
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 }
