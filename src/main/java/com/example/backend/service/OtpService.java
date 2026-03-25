@@ -71,10 +71,15 @@ public class OtpService {
     @Value("${RESEND_FROM_EMAIL:no-reply@smartplanai.com}")
     private String fromEmail;
 
-    // Store OTP temporarily (email -> otp)
+    // Store OTP temporarily
     private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
 
     public boolean sendOtp(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            logger.error("Email is null or empty");
+            return false;
+        }
+
         String otp = String.valueOf(RANDOM.nextInt(900000) + 100000);
         otpStorage.put(email, otp);
 
@@ -86,10 +91,15 @@ public class OtpService {
                     .to(email)
                     .subject("SmartPlan AI - Your Login OTP")
                     .html("""
-                        <p>Hello,</p>
-                        <p>Your OTP for signing into <strong>SmartPlan AI</strong> is: <b>%s</b></p>
-                        <p>This OTP is valid for 10 minutes.</p>
-                        <p>If you did not request this, please ignore this email.</p>
+                        <div style="font-family: Arial, sans-serif;">
+                            <h2>Hello,</h2>
+                            <p>Your OTP for signing into <strong>SmartPlan AI</strong> is:</p>
+                            <h1 style="color: #4f46e5;">%s</h1>
+                            <p>This OTP is valid for 10 minutes.</p>
+                            <p>If you did not request this, please ignore this email.</p>
+                            <br>
+                            <p>Best regards,<br>SmartPlan AI Team</p>
+                        </div>
                         """.formatted(otp))
                     .build();
 
@@ -100,11 +110,11 @@ public class OtpService {
 
         } catch (ResendException e) {
             otpStorage.remove(email);
-            logger.error("❌ Resend failed to send OTP to {}: {}", email, e.getMessage());
+            logger.error("❌ Resend failed to send OTP to {}: {}", email, e.getMessage(), e);
             return false;
         } catch (Exception e) {
             otpStorage.remove(email);
-            logger.error("Unexpected error while sending OTP to {}", email, e);
+            logger.error("Unexpected error sending OTP to {}: {}", email, e.getMessage(), e);
             return false;
         }
     }
@@ -116,8 +126,7 @@ public class OtpService {
             logger.info("✅ OTP verified successfully for {}", email);
             return true;
         }
-        logger.warn("Invalid OTP for {}", email);
+        logger.warn("❌ Invalid OTP attempt for {}", email);
         return false;
     }
 }
-
