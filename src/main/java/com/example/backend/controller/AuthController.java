@@ -144,55 +144,140 @@
 // }
 
 
-package com.example.backend.service;
+package com.example.backend.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
+import com.example.backend.entity.User;
+import com.example.backend.repository.UserRepository;
+import com.example.backend.service.OtpService;
 
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
-@Service
-public class OtpService {
+@RestController
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "*")
+public class AuthController {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final UserRepository userRepository;
+    private final OtpService otpService;
 
-    // store OTP temporarily
-    private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
-
-    public boolean sendOtp(String email) {
-
-        String otp = String.valueOf(new Random().nextInt(900000) + 100000);
-
-        otpStorage.put(email, otp);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject("SmartPlan AI - OTP Verification");
-            message.setText("Your OTP is: " + otp);
-            mailSender.send(message);
-            return true;
-        } catch (Exception e) {
-            otpStorage.remove(email);
-            return false;
-        }
+    public AuthController(UserRepository userRepository, OtpService otpService) {
+        this.userRepository = userRepository;
+        this.otpService = otpService;
     }
 
-    public boolean verifyOtp(String email, String otp) {
+    // REGISTER
+@@ -173,101 +27,110 @@ public class AuthController {
+    public Map<String, Object> register(@RequestBody Map<String, String> body) {
 
-        String storedOtp = otpStorage.get(email);
+        Map<String, Object> response = new HashMap<>();
 
-        if (storedOtp != null && storedOtp.equals(otp)) {
-            otpStorage.remove(email);
-            return true;
+        try {
+            String name = body.get("name");
+            String email = body.get("email");
+            String phone = body.get("phone");
+            String password = body.get("password");
+
+            User existingUser = userRepository.findByEmail(email);
+
+            if (existingUser != null) {
+                response.put("message", "Email already registered");
+                return response;
+            }
+
+            User user = new User();
+            user.setName(name);
+            user.setEmail(email);
+            user.setPhone(phone);
+            user.setPassword(password);
+
+            userRepository.save(user);
+
+            boolean otpSent = otpService.sendOtp(email);
+
+            if (otpSent) {
+                response.put("message", "OTP sent successfully");
+            } else {
+                response.put("message", "Account created, but OTP could not be sent. Please try again.");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("message", "Registration failed");
         }
 
-        return false;
+        return response;
+    }
+
+    // LOGIN
+    @PostMapping("/login")
+    public Map<String, Object> login(@RequestBody Map<String, String> body) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String email = body.get("email");
+            String password = body.get("password");
+
+            User user = userRepository.findByEmail(email);
+
+            if (user == null) {
+                response.put("message", "User not found");
+                return response;
+            }
+
+            if (!user.getPassword().equals(password)) {
+                response.put("message", "Invalid password");
+                return response;
+            }
+
+            boolean otpSent = otpService.sendOtp(email);
+
+            if (otpSent) {
+                response.put("message", "OTP sent successfully");
+            } else {
+                response.put("message", "Login successful, but OTP could not be sent. Please try again.");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("message", "Login failed");
+        }
+
+        return response;
+    }
+
+    // VERIFY OTP
+    @PostMapping("/verify-otp")
+    public Map<String, Object> verifyOtp(@RequestBody Map<String, String> body) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String email = body.get("email");
+            String otp = body.get("otp");
+
+            boolean isValid = otpService.verifyOtp(email, otp);
+
+            if (isValid) {
+                response.put("message", "OTP verified successfully");
+            } else {
+                response.put("message", "Invalid OTP");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("message", "OTP verification failed");
+        }
+
+        return response;
+    }
+
+    @GetMapping("/users")
+    public Iterable<User> getAllUsers() {
+        return userRepository.findAll();
     }
 }
 
