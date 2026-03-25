@@ -51,10 +51,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class OtpService {
@@ -63,20 +62,26 @@ public class OtpService {
     private JavaMailSender mailSender;
 
     // store OTP temporarily
-    private Map<String, String> otpStorage = new HashMap<>();
+    private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
 
-    public void sendOtp(String email) {
+    public boolean sendOtp(String email) {
 
         String otp = String.valueOf(new Random().nextInt(900000) + 100000);
 
         otpStorage.put(email, otp);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("SmartPlan AI - OTP Verification");
-        message.setText("Your OTP is: " + otp);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject("SmartPlan AI - OTP Verification");
+            message.setText("Your OTP is: " + otp);
 
-        mailSender.send(message);
+            mailSender.send(message);
+            return true;
+        } catch (Exception e) {
+            otpStorage.remove(email);
+            return false;
+        }
     }
 
     public boolean verifyOtp(String email, String otp) {
@@ -91,3 +96,4 @@ public class OtpService {
         return false;
     }
 }
+
