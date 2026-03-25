@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import org.springframework.stereotype.Service;
 import java.util.*;
+import java.net.URLEncoder;
 
 @Service
 public class TripService {
