@@ -266,4 +266,8 @@ public class AuthController {
 
         return response;
     }
+    @GetMapping("/users")
+    public Iterable<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 }
