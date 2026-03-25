@@ -7,6 +7,7 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,9 +19,6 @@ public class GooglePlacesService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Get tourist attractions for a city
-     */
     public List<Map<String, Object>> getTouristPlaces(String city) {
         try {
             String query = "best tourist attractions in " + city;
@@ -43,9 +41,6 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Get restaurants in a city
-     */
     public List<Map<String, Object>> getRestaurants(String city) {
         try {
             String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=restaurants+in+" 
@@ -66,17 +61,11 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Get restaurants near a location with budget filter
-     */
     public List<Map<String, Object>> getRestaurantsNear(String location, String budget) {
         try {
             String priceQuery = "";
-            if ("Low Budget".equalsIgnoreCase(budget)) {
-                priceQuery = " cheap";
-            } else if ("High Budget".equalsIgnoreCase(budget)) {
-                priceQuery = " fine dining";
-            }
+            if ("Low Budget".equalsIgnoreCase(budget)) priceQuery = " cheap";
+            else if ("High Budget".equalsIgnoreCase(budget)) priceQuery = " fine dining";
 
             String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=restaurants+near+" 
                          + URLEncoder.encode(location + priceQuery, StandardCharsets.UTF_8) 
@@ -96,9 +85,6 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Get hotels near coordinates
-     */
     public List<Map<String, Object>> getHotelsNearLocation(double lat, double lng, int radiusMeters) {
         try {
             String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" 
@@ -120,9 +106,6 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Get hotels in a city
-     */
     public List<Map<String, Object>> getHotelsInDestination(String city) {
         try {
             String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=hotels+in+" 
@@ -143,9 +126,6 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Get place location (lat, lng)
-     */
     public Map<String, Object> getPlaceLocation(String placeName) {
         try {
             String url = "https://maps.googleapis.com/maps/api/place/textsearch/json?query=" 
@@ -187,9 +167,6 @@ public class GooglePlacesService {
         }
     }
 
-    /**
-     * Build Google Photo URL from photo reference
-     */
     public String buildPhotoUrl(String photoReference, int maxWidth) {
         if (photoReference == null || photoReference.isEmpty() || apiKey == null) {
             return null;
