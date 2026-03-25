@@ -74,26 +74,24 @@ public class OtpService {
     private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
 
     public boolean sendOtp(String email) {
+        logger.info("=== sendOtp called for email: {} ===", email);
+        logger.info("RESEND_API_KEY length: {}", resendApiKey != null ? resendApiKey.length() : "NULL");
+        logger.info("FROM_EMAIL: {}", fromEmail);
+
         String otp = String.valueOf(RANDOM.nextInt(900000) + 100000);
         otpStorage.put(email, otp);
 
-        logger.info("Attempting to send OTP to: {} using from: {}", email, fromEmail);
-
         try {
-            if (resendApiKey == null || resendApiKey.trim().isEmpty()) {
-                logger.error("RESEND_API_KEY is missing or empty!");
-                return false;
-            }
-
             Resend resend = new Resend(resendApiKey);
 
             SendEmailRequest request = SendEmailRequest.builder()
                     .from(fromEmail)
                     .to(email)
                     .subject("SmartPlan AI - Your Login OTP")
-                    .html("<h2>Your OTP is: <b>" + otp + "</b></h2><p>This OTP expires in 10 minutes.</p>")
+                    .html("<h2>Your OTP is: <b>" + otp + "</b></h2><p>Valid for 10 minutes.</p>")
                     .build();
 
+            logger.info("Sending email via Resend...");
             resend.emails().send(request);
 
             logger.info("✅ OTP sent successfully to: {}", email);
@@ -101,14 +99,12 @@ public class OtpService {
 
         } catch (ResendException e) {
             otpStorage.remove(email);
-            logger.error("❌ ResendException: {}", e.getMessage(), e);
-            if (e.getCause() != null) {
-                logger.error("Cause: {}", e.getCause().getMessage());
-            }
+            logger.error("❌ ResendException: {}", e.getMessage());
+            logger.error("Full Resend error: ", e);
             return false;
         } catch (Exception e) {
             otpStorage.remove(email);
-            logger.error("❌ Unexpected exception while sending OTP: {}", e.getMessage(), e);
+            logger.error("❌ Unexpected error: {}", e.getMessage(), e);
             return false;
         }
     }
