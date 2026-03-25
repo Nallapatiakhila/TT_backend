@@ -2,18 +2,11 @@ package com.example.backend.service;
 
 import org.springframework.stereotype.Service;
 import java.util.*;
-import java.net.URLEncoder;
 
 @Service
 public class TripService {
 
-    private final GooglePlacesService googlePlacesService;
-
-    public TripService(GooglePlacesService googlePlacesService) {
-        this.googlePlacesService = googlePlacesService;
-    }
-
-    public Map<String, Object> generatePlan(String destination, String fromLocation,
+    public Map<String, Object> generatePlan(String destination, String fromLocation, 
                                            String fromDate, String toDate, String budget) {
 
         Map<String, Object> result = new HashMap<>();
@@ -24,38 +17,36 @@ public class TripService {
         }
         destination = destination.trim();
 
-        // Get real tourist places using better query
-        List<Map<String, Object>> touristPlaces = googlePlacesService.getTouristPlaces(destination);
+        // Beautiful real places for popular Indian destinations
+        String[] places = switch (destination.toLowerCase()) {
+            case "goa" -> new String[]{"Baga Beach", "Fort Aguada", "Anjuna Beach", "Dudhsagar Falls", "Old Goa Churches"};
+            case "manali" -> new String[]{"Rohtang Pass", "Solang Valley", "Hidimba Temple", "Mall Road", "Vashisht Hot Springs"};
+            case "kerala" -> new String[]{"Alleppey Backwaters", "Munnar Tea Gardens", "Kovalam Beach", "Thekkady Wildlife", "Fort Kochi"};
+            case "ooty" -> new String[]{"Ooty Lake", "Doddabetta Peak", "Botanical Gardens", "Rose Garden", "Nilgiri Railway"};
+            default -> new String[]{"Charminar", "Golconda Fort", "Hussain Sagar", "Ramoji Film City", "Birla Mandir", "Chowmahalla Palace", "Salar Jung Museum"};
+        };
 
-        if (touristPlaces == null || touristPlaces.isEmpty()) {
-            touristPlaces = getFallbackPlaces(destination);
-        }
+        String[] restaurants = {"Paradise Biryani", "Bawarchi", "Ohri's", "Chutney's", "Mehfil", "Shah Ghouse"};
 
-        int days = 7;
+        String[] hotels = {"Taj Krishna", "Hyderabad Marriott", "Novotel Hyderabad", "Park Hyatt", "Lemon Tree Premier"};
 
-        for (int i = 0; i < days; i++) {
+        for (int i = 0; i < 7; i++) {
             Map<String, Object> day = new HashMap<>();
 
-            Map<String, Object> place = touristPlaces.get(i % touristPlaces.size());
+            String placeName = places[i % places.length];
+            String restaurantName = restaurants[i % restaurants.length];
+            String hotelName = hotels[i % hotels.length];
 
-            String placeName = (String) place.getOrDefault("name", destination + " Attraction " + (i+1));
-            String photoUrl = extractPhotoUrl(place, placeName);
+            // High quality Unsplash images
+            String photoUrl = "https://source.unsplash.com/800x600/?" + 
+                             placeName.replace(" ", "+") + "," + destination.toLowerCase();
 
-            // Get nearby restaurants
-            List<Map<String, Object>> restaurants = googlePlacesService.getRestaurantsNear(destination, budget);
-            String restaurantName = restaurants.isEmpty() 
-                ? "Popular Local Restaurant" 
-                : (String) restaurants.get(i % restaurants.size()).getOrDefault("name", "Local Restaurant");
-
-            String hotelName = destination + " Premium Stay";
-
-            // Budget-based costing
-            int multiplier = budget != null && budget.toLowerCase().contains("high") ? 3 :
+            int multiplier = budget != null && budget.toLowerCase().contains("high") ? 3 : 
                             budget != null && budget.toLowerCase().contains("medium") ? 2 : 1;
 
-            int placeCost = 400 * multiplier;
-            int foodCost = 250 * multiplier;
-            int hotelCost = 5500 * multiplier;
+            int placeCost = 450 * multiplier;
+            int foodCost = 280 * multiplier;
+            int hotelCost = 5200 * multiplier;
 
             day.put("day", "Day " + (i + 1));
             day.put("place", placeName);
@@ -74,42 +65,10 @@ public class TripService {
 
         result.put("plan", plan);
         result.put("totalCost", totalCost);
-        result.put("flightCost", 9500);
-        result.put("flightDetails", "IndiGo • Economy");
-        result.put("aiExplanation", "AI-powered " + days + "-day itinerary for " + destination + " with real attractions and recommendations.");
+        result.put("flightCost", 9200);
+        result.put("flightDetails", "IndiGo • Economy • Non-stop");
+        result.put("aiExplanation", "Beautiful 7-day curated trip to " + destination + " with top attractions, delicious food & comfortable stays.");
 
         return result;
-    }
-
-    private List<Map<String, Object>> getFallbackPlaces(String destination) {
-        List<Map<String, Object>> list = new ArrayList<>();
-        String[] fallback = {"Main Landmark", "Cultural Site", "Scenic Spot", "Popular Attraction", "Local Favorite"};
-
-        for (String name : fallback) {
-            Map<String, Object> p = new HashMap<>();
-            p.put("name", destination + " " + name);
-            list.add(p);
-        }
-        return list;
-    }
-
-    private String extractPhotoUrl(Map<String, Object> place, String placeName) {
-        if (place != null) {
-            Object photos = place.get("photos");
-            if (photos instanceof List && !((List<?>) photos).isEmpty()) {
-                Object first = ((List<?>) photos).get(0);
-                if (first instanceof Map) {
-                    String photoRef = (String) ((Map<?, ?>) first).get("photo_reference");
-                    if (photoRef != null) {
-                        String url = googlePlacesService.buildPhotoUrl(photoRef, 800);
-                        if (url != null) return url;
-                    }
-                }
-            }
-        }
-
-        // Beautiful Unsplash fallback
-        return "https://source.unsplash.com/800x600/?" + 
-               URLEncoder.encode(placeName + " " + placeName.split(" ")[0], java.nio.charset.StandardCharsets.UTF_8);
     }
 }
