@@ -12,9 +12,9 @@ public class TripService {
         this.googlePlacesService = googlePlacesService;
     }
 
-    public Map<String, Object> generatePlan(String destination, String fromLocation, 
+    public Map<String, Object> generatePlan(String destination, String fromLocation,
                                            String fromDate, String toDate, String budget) {
-        
+
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> plan = new ArrayList<>();
 
@@ -23,42 +23,38 @@ public class TripService {
         }
         destination = destination.trim();
 
-        // Get real tourist places using Google Places API
-        List<Map<String, Object>> places = googlePlacesService.getTouristPlaces(destination);
+        // Get real tourist places using better query
+        List<Map<String, Object>> touristPlaces = googlePlacesService.getTouristPlaces(destination);
 
-        // Fallback if API fails or returns nothing
-        if (places == null || places.isEmpty()) {
-            places = getFallbackPlaces(destination);
+        if (touristPlaces == null || touristPlaces.isEmpty()) {
+            touristPlaces = getFallbackPlaces(destination);
         }
 
-        int days = 7; // You can make this dynamic later based on fromDate-toDate
+        int days = 7;
 
         for (int i = 0; i < days; i++) {
             Map<String, Object> day = new HashMap<>();
 
-            // Get place for this day
-            Map<String, Object> placeData = places.get(i % places.size());
-            String placeName = (String) placeData.getOrDefault("name", destination + " Attraction");
+            Map<String, Object> place = touristPlaces.get(i % touristPlaces.size());
 
-            // Get photo URL (from Google or Unsplash fallback)
-            String photoUrl = extractPhotoUrl(placeData, placeName);
+            String placeName = (String) place.getOrDefault("name", destination + " Attraction " + (i+1));
+            String photoUrl = extractPhotoUrl(place, placeName);
 
-            // Get nearby restaurant
-            List<Map<String, Object>> restaurants = googlePlacesService.getRestaurantsNear(destination);
+            // Get nearby restaurants
+            List<Map<String, Object>> restaurants = googlePlacesService.getRestaurantsNear(destination, budget);
             String restaurantName = restaurants.isEmpty() 
                 ? "Popular Local Restaurant" 
                 : (String) restaurants.get(i % restaurants.size()).getOrDefault("name", "Local Restaurant");
 
-            // Hotel name
-            String hotelName = destination + " Premium Hotel";
+            String hotelName = destination + " Premium Stay";
 
-            // Cost calculation based on budget
-            int multiplier = "high budget".equalsIgnoreCase(budget) ? 3 : 
-                            "medium budget".equalsIgnoreCase(budget) ? 2 : 1;
+            // Budget-based costing
+            int multiplier = budget != null && budget.toLowerCase().contains("high") ? 3 :
+                            budget != null && budget.toLowerCase().contains("medium") ? 2 : 1;
 
             int placeCost = 400 * multiplier;
             int foodCost = 250 * multiplier;
-            int hotelCost = 5000 * multiplier;
+            int hotelCost = 5500 * multiplier;
 
             day.put("day", "Day " + (i + 1));
             day.put("place", placeName);
@@ -78,34 +74,32 @@ public class TripService {
         result.put("plan", plan);
         result.put("totalCost", totalCost);
         result.put("flightCost", 9500);
-        result.put("flightDetails", "IndiGo / Air India • Economy • Non-stop");
-        result.put("aiExplanation", "Beautiful " + days + "-day itinerary for " + destination + " with top attractions, great food & comfortable stays.");
+        result.put("flightDetails", "IndiGo • Economy");
+        result.put("aiExplanation", "AI-powered " + days + "-day itinerary for " + destination + " with real attractions and recommendations.");
 
         return result;
     }
 
-    // Fallback places if Google API fails
     private List<Map<String, Object>> getFallbackPlaces(String destination) {
         List<Map<String, Object>> list = new ArrayList<>();
-        String[] names = {"Main Attraction", "Historic Site", "Scenic Spot", "Popular Landmark", "Local Favorite"};
+        String[] fallback = {"Main Landmark", "Cultural Site", "Scenic Spot", "Popular Attraction", "Local Favorite"};
 
-        for (String name : names) {
-            Map<String, Object> place = new HashMap<>();
-            place.put("name", destination + " " + name);
-            list.add(place);
+        for (String name : fallback) {
+            Map<String, Object> p = new HashMap<>();
+            p.put("name", destination + " " + name);
+            list.add(p);
         }
         return list;
     }
 
-    // Extract photo from Google Places or use Unsplash
-    private String extractPhotoUrl(Map<String, Object> placeData, String placeName) {
-        if (placeData != null) {
-            Object photos = placeData.get("photos");
+    private String extractPhotoUrl(Map<String, Object> place, String placeName) {
+        if (place != null) {
+            Object photos = place.get("photos");
             if (photos instanceof List && !((List<?>) photos).isEmpty()) {
-                Object photo = ((List<?>) photos).get(0);
-                if (photo instanceof Map) {
-                    String photoRef = (String) ((Map<?, ?>) photo).get("photo_reference");
-                    if (photoRef != null && googlePlacesService != null) {
+                Object first = ((List<?>) photos).get(0);
+                if (first instanceof Map) {
+                    String photoRef = (String) ((Map<?, ?>) first).get("photo_reference");
+                    if (photoRef != null) {
                         String url = googlePlacesService.buildPhotoUrl(photoRef, 800);
                         if (url != null) return url;
                     }
@@ -113,8 +107,8 @@ public class TripService {
             }
         }
 
-        // Fallback to Unsplash with better keywords
-        String query = (placeName + " " + placeName.split(" ")[0]).replace(" ", "+");
-        return "https://source.unsplash.com/800x600/?" + query;
+        // Beautiful Unsplash fallback
+        return "https://source.unsplash.com/800x600/?" + 
+               URLEncoder.encode(placeName + " " + placeName.split(" ")[0], java.nio.charset.StandardCharsets.UTF_8);
     }
 }
